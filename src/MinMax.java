@@ -5,52 +5,87 @@ import java.util.Vector;
 class MinMax {
   private GameState bestNextState;
   private int me;
+  private static final int maxDepth = 7;
 
   MinMax(GameState gameState) {
     bestNextState = gameState;
     me = gameState.getNextPlayer();
   }
 
-  private int utilityForState(GameState state) {
-    if (me == Constants.CELL_X)
-      return state.isXWin() ? 1 : 0;
-    else return state.isOWin() ? 1 : 0;
-  }
-
   GameState getBestNextState() {
-    maxsearch(bestNextState, Integer.MIN_VALUE, Integer.MAX_VALUE);
+    maxsearch(bestNextState, 0, Integer.MIN_VALUE, Integer.MAX_VALUE);
     return bestNextState;
   }
 
-  private int maxsearch(GameState state, int alpha, int beta) {
+  private int numberOfCellsForPlayer(GameState state, int player) {
+    int sum = 0;
+    for (int i = 0; i < GameState.CELL_COUNT; i++) {
+      if (state.at(i) == player)
+        sum++;
+    }
+    return sum;
+  }
+
+  private int numberOfCellsInDiagnonalsForPlayer(GameState state, int player) {
+    int sum = 0;
+    int inset = 0;
+    for (int i = 0; i < GameState.BOARD_SIZE; i++) {
+      if (state.at(i,inset) == player)
+        sum++;
+      if (state.at(i,GameState.BOARD_SIZE-1-inset) == player)
+        sum++;
+      inset++;
+    }
+    return sum;
+  }
+
+  private int utilityForState(GameState state) {
+    if (state.isEOG()) {
+      if (me == Constants.CELL_X)
+        return state.isXWin() ? 1 : 0;
+      else return state.isOWin() ? 1 : 0;
+    } else {
+      return eval(state);
+    }
+  }
+
+  private int eval(GameState state) {
+    return numberOfCellsInDiagnonalsForPlayer(state, me);
+  }
+
+  private int maxsearch(GameState state, int depth, int alpha, int beta) {
+    if (depth >= maxDepth || state.isEOG())
+      return utilityForState(state);
+
     Vector<GameState> nextStates = new Vector<>();
     state.findPossibleMoves(nextStates);
 
-    if (state.isEOG())
-      return utilityForState(state);
+    GameState maxState = state;
 
     for (GameState nextState : nextStates) {
-      int v = minsearch(nextState, alpha, beta);
+      int v = minsearch(nextState, depth+1, alpha, beta);
       if (v > alpha) {
         alpha = v;
-        bestNextState = nextState;
+        maxState = nextState;
       }
       if (v >= beta)
         break;
     }
 
+    bestNextState = maxState;
+
     return alpha;
   }
 
-  private int minsearch(GameState state, int alpha, int beta) {
+  private int minsearch(GameState state, int depth, int alpha, int beta) {
+    if (depth >= maxDepth || state.isEOG())
+      return utilityForState(state);
+
     Vector<GameState> nextStates = new Vector<>();
     state.findPossibleMoves(nextStates);
 
-    if (state.isEOG())
-      return utilityForState(state);
-
     for (GameState nextState : nextStates) {
-      int v = maxsearch(nextState, alpha, beta);
+      int v = maxsearch(nextState, depth+1, alpha, beta);
       beta = Math.min(beta,v);
       if (v <= alpha)
         break;
